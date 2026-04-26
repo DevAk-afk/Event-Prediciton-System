@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Koshish — Event Attendance Prediction</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a26;
+      --border: rgba(255,255,255,0.07);
+      --accent: #6c63ff;
+      --accent2: #ff6b9d;
+      --accent3: #00d4a1;
+      --text: #f0f0f8;
+      --muted: #6b6b88;
+      --warn: #ffbe0b;
+      --danger: #ff4757;
+      --success: #00d4a1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glow orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-1 { width: 400px; height: 400px; background: rgba(108,99,255,0.12); top: -100px; left: -100px; }
+    .orb-2 { width: 350px; height: 350px; background: rgba(255,107,157,0.08); bottom: 100px; right: -80px; }
+    .orb-3 { width: 250px; height: 250px; background: rgba(0,212,161,0.07); top: 50%; left: 50%; transform: translate(-50%,-50%); }
+
+    header {
+      position: relative; z-index: 10;
+      padding: 28px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+    .logo {
+      display: flex; align-items: center; gap: 14px;
+    }
+    .logo-badge {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800; font-size: 18px;
+      color: white; letter-spacing: -1px;
+    }
+    .logo-text h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px; font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .logo-text p {
+      font-size: 12px; color: var(--muted); font-weight: 300;
+    }
+    .header-right {
+      display: flex; align-items: center; gap: 16px;
+    }
+    .tag {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px; font-weight: 500;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .tag-ai { background: rgba(108,99,255,0.15); color: var(--accent); border: 1px solid rgba(108,99,255,0.3); }
+    .tag-pcte { background: rgba(0,212,161,0.1); color: var(--accent3); border: 1px solid rgba(0,212,161,0.25); }
+
+    main {
+      position: relative; z-index: 5;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 50px 0 60px;
+    }
+    .hero h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(36px, 5vw, 64px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -2px;
+      margin-bottom: 18px;
+    }
+    .hero h2 span {
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      color: var(--muted); font-size: 17px; font-weight: 300;
+      max-width: 500px; margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 16px; margin-bottom: 40px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      transition: border-color 0.3s;
+    }
+    .stat-card:hover { border-color: rgba(108,99,255,0.3); }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+    .stat-value { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.success { color: var(--success); }
+    .stat-value.warn { color: var(--warn); }
+
+    /* Main layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 24px 28px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .card-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px; font-weight: 700;
+    }
+    .card-body { padding: 28px; }
+
+    /* Form */
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label {
+      font-size: 12px; font-weight: 500;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;
+    }
+    input, select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      width: 100%;
+      appearance: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b88' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+    select option { background: var(--surface2); }
+
+    .range-group { grid-column: 1 / -1; }
+    .range-header { display: flex; justify-content: space-between; align-items: center; }
+    input[type=range] {
+      padding: 0; height: 6px;
+      background: var(--surface2);
+      border: none; border-radius: 3px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(108,99,255,0.5);
+    }
+    .range-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px; font-weight: 700;
+      color: var(--accent);
+    }
+
+    .checkbox-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .checkbox-row input[type=checkbox] {
+      width: 18px; height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .checkbox-row span { font-size: 14px; }
+
+    .predict-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none; border-radius: 12px;
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: opacity 0.2s, transform 0.2s;
+      margin-top: 8px;
+    }
+    .predict-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .predict-btn:active { transform: translateY(0); }
+    .predict-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Results panel */
+    .results-panel { position: sticky; top: 24px; }
+
+    .result-placeholder {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .result-placeholder .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+    .result-placeholder p { font-size: 14px; line-height: 1.6; }
+
+    .result-content { display: none; }
+    .result-content.show { display: block; }
+
+    .big-number {
+      text-align: center;
+      padding: 36px 20px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .big-number .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+    .big-number .number {
+      font-family: 'Syne', sans-serif;
+      font-size: 72px; font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .big-number .range { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .big-number .range span { color: var(--text); }
+
+    .occupancy-section {
+      padding: 24px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .occ-header { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px; }
+    .occ-header strong { font-family: 'Syne', sans-serif; font-size: 15px; }
+    .progress-bar {
+      height: 10px;
+      background: var(--surface2);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 5px;
+      transition: width 1s cubic-bezier(0.4,0,0.2,1);
+      width: 0%;
+    }
+
+    .factors-section {
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .factors-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; }
+    .factor-tag {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 500;
+      margin: 3px;
+    }
+    .factor-tag.positive { background: rgba(0,212,161,0.12); color: var(--success); border: 1px solid rgba(0,212,161,0.25); }
+    .factor-tag.negative { background: rgba(255,71,87,0.12); color: var(--danger); border: 1px solid rgba(255,71,87,0.25); }
+
+    .recommendation {
+      padding: 20px 28px;
+    }
+    .rec-box {
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 13px; line-height: 1.6;
+    }
+    .rec-box.success { background: rgba(0,212,161,0.1); border: 1px solid rgba(0,212,161,0.2); color: var(--success); }
+    .rec-box.info { background: rgba(108,99,255,0.1); border: 1px solid rgba(108,99,255,0.2); color: var(--accent); }
+    .rec-box.warning { background: rgba(255,190,11,0.1); border: 1px solid rgba(255,190,11,0.2); color: var(--warn); }
+    .rec-box.danger { background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.2); color: var(--danger); }
+
+    /* History */
+    .history-section { margin-top: 24px; }
+    .history-table { width: 100%; border-collapse: collapse; }
+    .history-table th {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+      color: var(--muted); padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    .history-table td {
+      padding: 14px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .history-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .occ-badge {
+      display: inline-block; padding: 3px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 500;
+    }
+    .occ-high { background: rgba(0,212,161,0.15); color: var(--success); }
+    .occ-mid { background: rgba(108,99,255,0.15); color: var(--accent); }
+    .occ-low { background: rgba(255,190,11,0.15); color: var(--warn); }
+
+    .no-history { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+
+    /* Loading spinner */
+    .spinner {
+      display: none;
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    .spinner.show { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      background: rgba(255,71,87,0.1);
+      border: 1px solid rgba(255,71,87,0.25);
+      color: var(--danger);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      display: none;
+      margin-top: 12px;
+    }
+    .error-msg.show { display: block; }
+
+    @media (max-width: 1000px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .results-panel { position: static; }
+      .stats-bar { grid-template-columns: repeat(2,1fr); }
+    }
+    @media (max-width: 600px) {
+      main { padding: 24px 20px 60px; }
+      header { padding: 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .stats-bar { grid-template-columns: 1fr 1fr; }
+      .hero h2 { font-size: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <header>
+    <div class="logo">
+      <div class="logo-badge">K</div>
+      <div class="logo-text">
+        <h1>Koshish</h1>
+        <p>Event Intelligence System</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="tag tag-pcte">PCTE College</span>
+      <span class="tag tag-ai">AI Powered</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h2>Predict Your Event's<br/><span>Attendance</span> with AI</h2>
+      <p>Use machine learning to forecast how many students will attend your Koshish events — plan smarter, prepare better.</p>
+    </section>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Total Predictions</div>
+        <div class="stat-value accent" id="stat-total">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg. Predicted</div>
+        <div class="stat-value" id="stat-avg">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg. Occupancy</div>
+        <div class="stat-value success" id="stat-occ">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Top Event Type</div>
+        <div class="stat-value warn" id="stat-top" style="font-size:18px">—</div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <!-- Left: Form -->
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(108,99,255,0.15)">📋</div>
+            <div class="card-title">Event Details</div>
+          </div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>Event Name</label>
+                <input type="text" id="event_name" placeholder="e.g. Koshish Annual Cultural Night" />
+              </div>
+              <div class="form-group">
+                <label>Event Type</label>
+                <select id="event_type">
+                  <option value="">Select type…</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Venue</label>
+                <select id="venue">
+                  <option value="">Select venue…</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Day of Week</label>
+                <select id="day_of_week">
+                  <option value="">Select day…</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Month</label>
+                <select id="month">
+                  <option value="">Select month…</option>
+                  <option value="1">January</option><option value="2">February</option>
+                  <option value="3">March</option><option value="4">April</option>
+                  <option value="5">May</option><option value="6">June</option>
+                  <option value="7">July</option><option value="8">August</option>
+                  <option value="9">September</option><option value="10">October</option>
+                  <option value="11">November</option><option value="12">December</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Time Slot</label>
+                <select id="time_slot">
+                  <option value="">Select time…</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Expected Weather</label>
+                <select id="weather">
+                  <option value="">Select weather…</option>
+                </select>
+              </div>
+
+              <div class="range-group">
+                <label>
+                  <div class="range-header">
+                    <span>Pre-Registrations</span>
+                    <span class="range-val" id="reg-val">50</span>
+                  </div>
+                </label>
+                <input type="range" id="registration_count" min="0" max="300" value="50"
+                  oninput="document.getElementById('reg-val').textContent=this.value" />
+              </div>
+              <div class="range-group">
+                <label>
+                  <div class="range-header">
+                    <span>Social Media Posts</span>
+                    <span class="range-val" id="sm-val">5</span>
+                  </div>
+                </label>
+                <input type="range" id="social_media_posts" min="0" max="50" value="5"
+                  oninput="document.getElementById('sm-val').textContent=this.value" />
+              </div>
+              <div class="range-group">
+                <label>
+                  <div class="range-header">
+                    <span>Past Event Attendance</span>
+                    <span class="range-val" id="past-val">100</span>
+                  </div>
+                </label>
+                <input type="range" id="past_event_attendance" min="0" max="600" value="100"
+                  oninput="document.getElementById('past-val').textContent=this.value" />
+              </div>
+              <div class="range-group">
+                <label>
+                  <div class="range-header">
+                    <span>Entry Fee (₹)</span>
+                    <span class="range-val" id="fee-val">0</span>
+                  </div>
+                </label>
+                <input type="range" id="entry_fee" min="0" max="500" step="50" value="0"
+                  oninput="document.getElementById('fee-val').textContent=this.value" />
+              </div>
+              <div class="range-group">
+                <label>
+                  <div class="range-header">
+                    <span>Number of Speakers / Performers</span>
+                    <span class="range-val" id="spk-val">2</span>
+                  </div>
+                </label>
+                <input type="range" id="num_speakers" min="1" max="15" value="2"
+                  oninput="document.getElementById('spk-val').textContent=this.value" />
+              </div>
+
+              <div class="form-group full">
+                <label class="checkbox-row" style="text-transform:none;letter-spacing:0;">
+                  <input type="checkbox" id="is_holiday" />
+                  <span>🎉 Event falls on a public holiday or college holiday</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="error-msg" id="error-msg">⚠ Please fill all required fields before predicting.</div>
+            <button class="predict-btn" id="predict-btn" onclick="predict()">
+              <span id="btn-text">✦ Predict Attendance</span>
+              <div class="spinner" id="spinner"></div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Results -->
+      <div class="results-panel">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(0,212,161,0.15)">📊</div>
+            <div class="card-title">Prediction Result</div>
+          </div>
+          <div id="placeholder" class="result-placeholder">
+            <div class="icon">🔮</div>
+            <p>Fill in the event details and hit <strong>Predict</strong> to see the attendance forecast.</p>
+          </div>
+          <div id="result-content" class="result-content">
+            <div class="big-number">
+              <div class="label">Predicted Attendance</div>
+              <div class="number" id="res-number">0</div>
+              <div class="range">Range: <span id="res-low">0</span> – <span id="res-high">0</span> attendees</div>
+            </div>
+            <div class="occupancy-section">
+              <div class="occ-header">
+                <span>Venue Occupancy</span>
+                <strong id="res-occ">0%</strong>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" id="res-progress" style="background: linear-gradient(90deg, var(--accent), var(--accent2));"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px;">
+                <span>0</span>
+                <span id="res-cap">Max: 0</span>
+              </div>
+            </div>
+            <div class="factors-section">
+              <div class="factors-title">Key Influencing Factors</div>
+              <div id="res-factors"></div>
+            </div>
+            <div class="recommendation">
+              <div class="rec-box" id="rec-box"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="history-section">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(255,107,157,0.15)">📁</div>
+          <div class="card-title">Prediction History</div>
+        </div>
+        <div id="history-body">
+          <div class="no-history">No predictions yet. Make your first prediction above!</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    async function loadOptions() {
+      const res = await fetch('/api/options');
+      const data = await res.json();
+      populate('event_type', data.event_types);
+      populate('venue', data.venues);
+      populate('day_of_week', data.days);
+      populate('weather', data.weather);
+      populate('time_slot', data.time_slots);
+    }
+
+    function populate(id, items) {
+      const sel = document.getElementById(id);
+      items.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v; opt.textContent = v;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function predict() {
+      const fields = ['event_type','venue','day_of_week','month','time_slot','weather'];
+      for (const f of fields) {
+        if (!document.getElementById(f).value) {
+          document.getElementById('error-msg').classList.add('show');
+          return;
+        }
+      }
+      document.getElementById('error-msg').classList.remove('show');
+
+      const btn = document.getElementById('predict-btn');
+      btn.disabled = true;
+      document.getElementById('btn-text').style.display = 'none';
+      document.getElementById('spinner').classList.add('show');
+
+      const payload = {
+        event_name: document.getElementById('event_name').value || 'Unnamed Event',
+        event_type: document.getElementById('event_type').value,
+        venue: document.getElementById('venue').value,
+        day_of_week: document.getElementById('day_of_week').value,
+        month: document.getElementById('month').value,
+        time_slot: document.getElementById('time_slot').value,
+        weather: document.getElementById('weather').value,
+        registration_count: document.getElementById('registration_count').value,
+        social_media_posts: document.getElementById('social_media_posts').value,
+        is_holiday: document.getElementById('is_holiday').checked ? 1 : 0,
+        past_event_attendance: document.getElementById('past_event_attendance').value,
+        entry_fee: document.getElementById('entry_fee').value,
+        num_speakers: document.getElementById('num_speakers').value
+      };
+
+      try {
+        const res = await fetch('/api/predict', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        showResult(data);
+        loadHistory();
+        loadStats();
+      } catch(e) {
+        alert('Prediction failed. Is the server running?');
+      } finally {
+        btn.disabled = false;
+        document.getElementById('btn-text').style.display = '';
+        document.getElementById('spinner').classList.remove('show');
+      }
+    }
+
+    function showResult(data) {
+      document.getElementById('placeholder').style.display = 'none';
+      const rc = document.getElementById('result-content');
+      rc.classList.add('show');
+
+      // Animate number
+      animateNumber('res-number', data.predicted_attendance);
+      document.getElementById('res-low').textContent = data.confidence_low;
+      document.getElementById('res-high').textContent = data.confidence_high;
+      document.getElementById('res-occ').textContent = data.occupancy_percent + '%';
+      document.getElementById('res-cap').textContent = 'Max: ' + data.venue_capacity;
+
+      setTimeout(() => {
+        document.getElementById('res-progress').style.width = Math.min(data.occupancy_percent, 100) + '%';
+      }, 100);
+
+      const factorsEl = document.getElementById('res-factors');
+      if (data.factors.length === 0) {
+        factorsEl.innerHTML = '<span style="color:var(--muted);font-size:12px;">No strong factors detected</span>';
+      } else {
+        factorsEl.innerHTML = data.factors.map(f =>
+          `<span class="factor-tag ${f.impact}">${f.impact === 'positive' ? '↑' : '↓'} ${f.label}</span>`
+        ).join('');
+      }
+
+      const rec = document.getElementById('rec-box');
+      rec.className = 'rec-box ' + data.recommendation.status;
+      rec.textContent = data.recommendation.text;
+    }
+
+    function animateNumber(id, target) {
+      const el = document.getElementById(id);
+      let start = 0;
+      const step = target / 40;
+      const timer = setInterval(() => {
+        start += step;
+        if (start >= target) { el.textContent = target; clearInterval(timer); }
+        else { el.textContent = Math.floor(start); }
+      }, 30);
+    }
+
+    async function loadHistory() {
+      const res = await fetch('/api/history');
+      const data = await res.json();
+      const body = document.getElementById('history-body');
+      if (!data.length) {
+        body.innerHTML = '<div class="no-history">No predictions yet.</div>';
+        return;
+      }
+      body.innerHTML = `<table class="history-table">
+        <thead><tr>
+          <th>#</th><th>Event</th><th>Type</th><th>Venue</th><th>Day</th>
+          <th>Predicted</th><th>Occupancy</th><th>Time</th>
+        </tr></thead>
+        <tbody>${data.map(e => `<tr>
+          <td>${e.id}</td>
+          <td><strong>${e.event_name}</strong></td>
+          <td>${e.event_type}</td>
+          <td>${e.venue}</td>
+          <td>${e.day}</td>
+          <td><strong>${e.predicted}</strong></td>
+          <td><span class="occ-badge ${e.occupancy >= 70 ? 'occ-high' : e.occupancy >= 40 ? 'occ-mid' : 'occ-low'}">${e.occupancy}%</span></td>
+          <td style="color:var(--muted)">${e.timestamp}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }
+
+    async function loadStats() {
+      const res = await fetch('/api/stats');
+      const data = await res.json();
+      document.getElementById('stat-total').textContent = data.total_events;
+      document.getElementById('stat-avg').textContent = data.avg_predicted || '—';
+      document.getElementById('stat-occ').textContent = data.avg_occupancy ? data.avg_occupancy + '%' : '—';
+      document.getElementById('stat-top').textContent = data.top_event_type;
+    }
+
+    loadOptions();
+    loadStats();
+  </script>
+</body>
+</html>
